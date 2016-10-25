@@ -1,0 +1,25 @@
+{
+  "name": "IonicSocket",
+  "version": "0.0.1",
+  "description": "cordova plugin socket",
+  "cordova": {
+    "id": "cordova-plugin-ionicSocket",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/miaojingThink/IonicSocket.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "thinking",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/miaojingThink/IonicSocket/issues"
+  },
+  "homepage": "https://github.com/miaojingThink/IonicSocket#readme"
+}

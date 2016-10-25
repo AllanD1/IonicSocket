@@ -16,7 +16,7 @@ public class IonicSocket extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("HelloWorld")) {
             String message = args.getString(0);
-            this.coolMethod(message, callbackContext);
+            this.HelloWorld(message, callbackContext);
             return true;
         }
         return false;

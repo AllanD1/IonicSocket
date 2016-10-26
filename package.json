@@ -1,5 +1,5 @@
 {
-  "name": "IonicSocket",
+  "name": "cordova-plugin-socket",
   "version": "0.0.1",
   "description": "cordova plugin socket",
   "cordova": {

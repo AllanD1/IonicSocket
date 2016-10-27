@@ -24,7 +24,22 @@
         NSString *host = [command.arguments objectAtIndex:0];
         NSString *port = [command.arguments objectAtIndex:1];
         NSString *message = [command.arguments objectAtIndex:2];
-        [self Send:host :port :message];
+        
+        NSArray *messages=[message componentsSeparatedByString:@";"];
+        double nextTime=0;
+        for (id info in messages)
+        {
+            if(![info isEqual:nil] && ![info isEqual:@""])
+            {
+                NSArray * infos=[info componentsSeparatedByString:@"@"];
+                [NSThread sleepForTimeInterval:nextTime];
+                [self Send:host :port :[infos objectAtIndex:0]];
+                if([infos count]==2)
+                {
+                    nextTime = [[infos objectAtIndex:1] doubleValue];
+                }
+            }
+        }
         result=[CDVPluginResult resultWithStatus:(CDVCommandStatus_OK)];
     }
     @catch (NSException *e)
@@ -89,7 +104,6 @@
             if (success) {
                 NSLog(@"client connect success, local address:%s,port:%d",inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
                 NSData * bytes=[self stringToByte:message];
-                
                 send(clientSocketId, [bytes bytes], [bytes length], 0);
                 // 第六步：关闭套接字
                 close(clientSocketId);

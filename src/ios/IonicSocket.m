@@ -109,10 +109,9 @@
                 close(clientSocketId);
             }
         } else {
-            NSLog(@"connect failed");
-            
             // 第六步：关闭套接字
             close(clientSocketId);
+            @throw [NSException exceptionWithName:@"Singleton" reason:@"无法连接服务器" userInfo:nil];
         }
     }
 }

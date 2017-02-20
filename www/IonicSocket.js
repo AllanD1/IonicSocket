@@ -1,5 +1,5 @@
 var exec = require('cordova/exec');
 
-exports.SendInfo = function (ip, port, sendInfo, success, error) {
-    exec(success, error, "IonicSocket", "SendInfo", [ip, port, sendInfo]);
+exports.sendInfo = function (ip, port, info, successCallBack, errorCallBack) {
+   exec(successCallBack, errorCallBack, "IonicSocket", "sendInfo", [ip, port, info]);
 };

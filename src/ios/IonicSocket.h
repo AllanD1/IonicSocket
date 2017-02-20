@@ -10,6 +10,6 @@
 
 @interface IonicSocket : CDVPlugin
 
-- (void)SendInfo:(CDVInvokedUrlCommand *)command;
+- (void)sendInfo:(CDVInvokedUrlCommand *)command;
 
 @end

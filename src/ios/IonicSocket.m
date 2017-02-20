@@ -13,53 +13,48 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-@implementation IonicSocket
-
-- (void)SendInfo:(CDVInvokedUrlCommand *)command
+/*定义socket发送对象*/
+@interface SocketConnection : NSObject
 {
-    NSString *callBackId=command.callbackId;
-    CDVPluginResult *result=nil;
-    @try
-    {
-        NSString *host = [command.arguments objectAtIndex:0];
-        NSString *port = [command.arguments objectAtIndex:1];
-        NSString *message = [command.arguments objectAtIndex:2];
-        
-        NSArray *messages=[message componentsSeparatedByString:@";"];
-        double nextTime=0;
-        for (id info in messages)
-        {
-            if(![info isEqual:nil] && ![info isEqual:@""])
-            {
-                NSArray * infos=[info componentsSeparatedByString:@"@"];
-                [NSThread sleepForTimeInterval:nextTime];
-                [self Send:host :port :[infos objectAtIndex:0]];
-                if([infos count]==2)
-                {
-                    nextTime = [[infos objectAtIndex:1] doubleValue];
-                }
-            }
-        }
-        result=[CDVPluginResult resultWithStatus:(CDVCommandStatus_OK)];
-    }
-    @catch (NSException *e)
-    {
-        result=[CDVPluginResult resultWithStatus:(CDVCommandStatus_ERROR) messageAsString:[e reason]];
-    }
-    @finally
-    {
-        [self.commandDelegate sendPluginResult:result callbackId:callBackId];
-    }
+    NSString * Port;
+    NSString * Host;
+    int clientSocketId;
+    BOOL success;
+    struct sockaddr_in addr;
+    struct sockaddr_in peerAddr;
 }
 
--(void) Send:(NSString *)host: (NSString *) port :(NSString*) message{
-    
+-(void) setHost:(NSString *)host;
+-(void) setPort:(NSString *)port;
+-(NSString *) getIdString;
+-(void) openConnection;
+-(void) sendHexString:(NSString *)info;
+//-(NSData*)stringToByte:(NSString*)info;
+
+@end
+
+@implementation SocketConnection
+
+-(void) setHost:(NSString *)host{
+    Host=host;
+}
+
+-(void) setPort:(NSString *)port{
+    Port=port;
+}
+
+-(NSString *) getIdString{
+    NSString * resultString;
+    resultString=[Host stringByAppendingString:Port];
+    return resultString;
+}
+
+-(void) openConnection{
     // 第一步：创建soket
     // TCP是基于数据流的，因此参数二使用SOCK_STREAM
     int error = -1;
-    int clientSocketId = socket(AF_INET, SOCK_STREAM, 0);
-    BOOL success = (clientSocketId != -1);
-    struct sockaddr_in addr;
+    clientSocketId = socket(AF_INET, SOCK_STREAM, 0);
+    success = (clientSocketId != -1);
     
     // 第二步：绑定端口号
     if (success) {
@@ -78,15 +73,15 @@
     }
     if (success) {
         // p2p
-        struct sockaddr_in peerAddr;
+        
         memset(&peerAddr, 0, sizeof(peerAddr));
         peerAddr.sin_len = sizeof(peerAddr);
         peerAddr.sin_family = AF_INET;
-        int intPort = [port intValue];
+        int intPort = [Port intValue];
         peerAddr.sin_port = htons(intPort);
         
         // 指定服务端的ip地址，测试时，修改成对应自己服务器的ip
-        peerAddr.sin_addr.s_addr = inet_addr([host UTF8String]);
+        peerAddr.sin_addr.s_addr = inet_addr([Host UTF8String]);
         
         socklen_t addrLen;
         addrLen = sizeof(peerAddr);
@@ -100,25 +95,50 @@
             // 第四步：获取套接字信息
             error = getsockname(clientSocketId, (struct sockaddr *)&addr, &addrLen);
             success = (error == 0);
-            
-            if (success) {
-                NSLog(@"client connect success, local address:%s,port:%d",inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-                NSData * bytes=[self stringToByte:message];
-                send(clientSocketId, [bytes bytes], [bytes length], 0);
-                // 第六步：关闭套接字
-                close(clientSocketId);
-            }
         } else {
-            // 第六步：关闭套接字
             close(clientSocketId);
             @throw [NSException exceptionWithName:@"Singleton" reason:@"无法连接服务器" userInfo:nil];
         }
     }
 }
 
--(NSData*)stringToByte:(NSString*)string
-{
-    NSString *hexString=[[string uppercaseString] stringByReplacingOccurrencesOfString:@" " withString:@""];
+-(void) sendHexString:(NSString *)info{
+    @try
+    {
+        int optval, optlen = sizeof(int);
+        getsockopt(clientSocketId, SOL_SOCKET, SO_ERROR,(char*) &optval, &optlen);
+        if(optval!=0)
+        {
+            //锁屏后导致socket关闭，重新连接。
+            [self openConnection];
+            //socklen_t addrLen;
+            //addrLen = sizeof(peerAddr);
+            //int error = connect(clientSocketId, (struct sockaddr *)&peerAddr, addrLen);
+            //success = (error == 0);
+            //if (success)
+            //{
+            //    error = getsockname(clientSocketId, (struct sockaddr *)&addr, &addrLen);
+            //    success = (error == 0);
+           // } else
+            //{
+             //   close(clientSocketId);
+             //   @throw [NSException exceptionWithName:@"Singleton" reason:@"无法连接服务器" userInfo:nil];
+            //}
+        }
+        //else
+        //{
+            NSData * bytes=[self stringToByte:info];
+            send(clientSocketId, [bytes bytes], [bytes length], 0);
+        //}
+    }
+    @catch (NSException *exception)
+    {
+        @throw [NSException exceptionWithName:@"Singleton" reason:@"无法连接服务器" userInfo:nil];
+    }
+}
+
+-(NSData*)stringToByte:(NSString*)info{
+    NSString *hexString=[[info uppercaseString] stringByReplacingOccurrencesOfString:@" " withString:@""];
     if ([hexString length]%2!=0) {
         return nil;
     }
@@ -129,21 +149,21 @@
         unichar hex_char1 = [hexString characterAtIndex:i]; ////两位16进制数中的第一位(高位*16)
         int int_ch1;
         if(hex_char1 >= '0' && hex_char1 <='9')
-        int_ch1 = (hex_char1-48)*16;   //// 0 的Ascll - 48
+            int_ch1 = (hex_char1-48)*16;   //// 0 的Ascll - 48
         else if(hex_char1 >= 'A' && hex_char1 <='F')
-        int_ch1 = (hex_char1-55)*16; //// A 的Ascll - 65
+            int_ch1 = (hex_char1-55)*16; //// A 的Ascll - 65
         else
-        return nil;
+            return nil;
         i++;
         
         unichar hex_char2 = [hexString characterAtIndex:i]; ///两位16进制数中的第二位(低位)
         int int_ch2;
         if(hex_char2 >= '0' && hex_char2 <='9')
-        int_ch2 = (hex_char2-48); //// 0 的Ascll - 48
+            int_ch2 = (hex_char2-48); //// 0 的Ascll - 48
         else if(hex_char2 >= 'A' && hex_char2 <='F')
-        int_ch2 = hex_char2-55; //// A 的Ascll - 65
+            int_ch2 = hex_char2-55; //// A 的Ascll - 65
         else
-        return nil;
+            return nil;
         
         tempbyt[0] = int_ch1+int_ch2;  ///将转化后的数放入Byte数组里
         [bytes appendBytes:tempbyt length:1];
@@ -152,3 +172,91 @@
 }
 
 @end
+
+
+
+static NSMutableArray * socketArray;
+
+@implementation IonicSocket
+
+- (void)sendInfo:(CDVInvokedUrlCommand *)command
+{
+    NSString *callBackId=command.callbackId;
+    CDVPluginResult *result=nil;
+    @try
+    {
+        NSString *host = [command.arguments objectAtIndex:0];
+        NSString *port = [command.arguments objectAtIndex:1];
+        NSString *message = [command.arguments objectAtIndex:2];
+        
+        if(socketArray==nil){
+            socketArray=[[NSMutableArray alloc] init];
+        }
+        SocketConnection * socketConnection=nil;
+        NSString * matchIdString=[host stringByAppendingString:port];
+        for (int i = 0; i < socketArray.count; i++)
+        {
+            SocketConnection *innerSocket= [socketArray objectAtIndex:i];
+            NSString *innerIdString=[innerSocket getIdString];
+            if([matchIdString isEqualToString:innerIdString]){
+                socketConnection=innerSocket;
+                break;
+            }
+        }
+        if(socketConnection==nil){
+            socketConnection=[[SocketConnection alloc] init];
+            [socketConnection setHost:host];
+            [socketConnection setPort:port];
+            [socketConnection openConnection];
+            [socketArray addObject:socketConnection];
+        }
+        
+        NSArray *messages=[message componentsSeparatedByString:@";"];
+        double nextTime=0;
+        for (id info in messages)
+        {
+            if(![info isEqual:nil] && ![info isEqual:@""])
+            {
+                NSArray * infos=[info componentsSeparatedByString:@"@"];
+                [NSThread sleepForTimeInterval:nextTime];
+                [socketConnection sendHexString:[infos objectAtIndex:0]];
+                //[self Send:host :port :[infos objectAtIndex:0]];
+                if([infos count]==2)
+                {
+                    nextTime = [[infos objectAtIndex:1] doubleValue];
+                }
+            }
+        }
+        result=[CDVPluginResult resultWithStatus:(CDVCommandStatus_OK)];
+    }
+    @catch (NSException *e)
+    {
+        result=[CDVPluginResult resultWithStatus:(CDVCommandStatus_ERROR) messageAsString:[e reason]];
+    }
+    @finally
+    {
+        [self.commandDelegate sendPluginResult:result callbackId:callBackId];
+    }
+}
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

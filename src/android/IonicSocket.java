@@ -29,7 +29,7 @@ public class IonicSocket extends CordovaPlugin {
         return false;
     }
 
-    public void SendInfo(String ip, int port, String sendInfo,CallbackContext callbackContext) {
+    public void sendInfo(String ip, int port, String sendInfo,CallbackContext callbackContext) {
         try
          {
             String[] sendInfos = sendInfo.split(";");

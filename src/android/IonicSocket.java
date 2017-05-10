@@ -19,11 +19,11 @@ public class IonicSocket extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if (action.equals("SendInfo")) {
+        if (action.equals("sendInfo")) {
             String ip = args.getString(0);
             int port =Integer.parseInt(args.getString(1));
             String sendInfo = args.getString(2);
-            this.SendInfo(ip,port,sendInfo, callbackContext);
+            this.sendInfo(ip,port,sendInfo, callbackContext);
             return true;
         }
         return false;

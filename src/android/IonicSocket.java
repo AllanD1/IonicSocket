@@ -44,7 +44,7 @@ public class IonicSocket extends CordovaPlugin {
                 } else if (atInfos.length == 1) {
                     outputStream.write(hexStr2Str(atInfos[0].replace(" ", "")).getBytes());
                 } else {
-                    throw new Exception("发送[" + info + "]命令出错");
+                    throw new Exception("send[" + info + "]Command error");
                 }
                 socket.close();
                 outputStream.close();
